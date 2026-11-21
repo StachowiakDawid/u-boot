@@ -298,6 +298,20 @@ static int tt_fallback_cp(stbtt_fontinfo *font, int cp)
 	return '?';
 }
 
+/* 0xXXRRGGBB-style pixel: mix fg over bg by coverage val (0..255) */
+static u32 tt_blend32(u32 fg, u32 bg, int val)
+{
+	u32 out = 0;
+	int sh;
+
+	for (sh = 0; sh < 24; sh += 8) {
+		u32 f = (fg >> sh) & 0xff, b = (bg >> sh) & 0xff;
+
+		out |= ((f * val + b * (255 - val)) / 255) << sh;
+	}
+	return out;
+}
+
 static int console_truetype_putc_xy(struct udevice *dev, uint x, uint y,
 				    int cp)
 {
@@ -343,6 +357,15 @@ static int console_truetype_putc_xy(struct udevice *dev, uint x, uint y,
 	width_frac = (int)VID_TO_POS(advance * met->scale);
 	if (x + width_frac >= vc_priv->xsize_frac)
 		return -EAGAIN;
+
+	/*
+	 * The glyph is drawn over the cell background: fill it first, so any
+	 * colour pair works (reverse video / highlighted menu entries, EFI
+	 * console colours), not only white on black.
+	 */
+	if (vid_priv->bpix == VIDEO_BPP32 && vid_priv->format != VIDEO_X2R10G10B10)
+		video_fill_part(vid, VID_TO_PIXEL(x), y, VID_TO_PIXEL(x + width_frac),
+				y + met->font_size, vid_priv->colour_bg);
 
 	/* Write the current cursor position into history */
 	if (priv->pos_ptr < POS_HISTORY_SIZE) {
@@ -434,12 +457,18 @@ static int console_truetype_putc_xy(struct udevice *dev, uint x, uint y,
 					int val = *bits;
 					int out;
 
+					if (vid_priv->format != VIDEO_X2R10G10B10) {
+						/* blend over the filled cell */
+						if (val)
+							*dst = tt_blend32(vid_priv->colour_fg,
+									  vid_priv->colour_bg, val);
+						dst++;
+						bits++;
+						continue;
+					}
 					if (vid_priv->colour_bg)
 						val = 255 - val;
-					if (vid_priv->format == VIDEO_X2R10G10B10)
-						out = val << 2 | val << 12 | val << 22;
-					else
-						out = val | val << 8 | val << 16;
+					out = val << 2 | val << 12 | val << 22;
 					if (vid_priv->colour_fg)
 						*dst++ |= out;
 					else
