@@ -270,6 +270,34 @@ static int console_truetype_move_rows(struct udevice *dev, uint rowdst,
 	return 0;
 }
 
+/*
+ * Characters the font has no glyph for: systemd-boot (over the EFI console)
+ * draws separators and frames with Unicode box-drawing characters, which
+ * otherwise come out as the font's replacement glyph.
+ */
+static int tt_fallback_cp(stbtt_fontinfo *font, int cp)
+{
+	if (cp < 0x80 || stbtt_FindGlyphIndex(font, cp))
+		return cp;
+	if (cp >= 0x2500 && cp <= 0x257f) {
+		switch (cp) {
+		case 0x2500: case 0x2501: case 0x2504: case 0x2505:
+		case 0x2508: case 0x2509: case 0x254c: case 0x254d:
+		case 0x2550: case 0x2574: case 0x2576: case 0x2578: case 0x257a:
+			return '-';
+		case 0x2502: case 0x2503: case 0x2506: case 0x2507:
+		case 0x250a: case 0x250b: case 0x254e: case 0x254f:
+		case 0x2551: case 0x2575: case 0x2577: case 0x2579: case 0x257b:
+			return '|';
+		default:
+			return '+';
+		}
+	}
+	if (cp >= 0x2580 && cp <= 0x259f)	/* block elements */
+		return ' ';
+	return '?';
+}
+
 static int console_truetype_putc_xy(struct udevice *dev, uint x, uint y,
 				    int cp)
 {
@@ -288,6 +316,8 @@ static int console_truetype_putc_xy(struct udevice *dev, uint x, uint y,
 	int advance;
 	void *start, *end, *line;
 	int row;
+
+	cp = tt_fallback_cp(font, cp);
 
 	/* First get some basic metrics about this character */
 	stbtt_GetCodepointHMetrics(font, cp, &advance, &lsb);
