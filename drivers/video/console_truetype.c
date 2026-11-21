@@ -355,6 +355,13 @@ static int console_truetype_putc_xy(struct udevice *dev, uint x, uint y,
 	x_shift = xpos - (double)tt_floor(xpos);
 	xpos += advance * met->scale;
 	width_frac = (int)VID_TO_POS(advance * met->scale);
+	/*
+	 * Monospace console: advance by whole character cells, like the EFI /
+	 * ANSI cursor positioning (col * x_charsize) does, so text written in
+	 * sequence and text positioned by column line up exactly.
+	 */
+	if (vc_priv->x_charsize < met->font_size)
+		width_frac = VID_TO_POS(vc_priv->x_charsize);
 	if (x + width_frac >= vc_priv->xsize_frac)
 		return -EAGAIN;
 
@@ -727,11 +734,23 @@ static void select_metrics(struct udevice *dev, struct console_tt_metrics *met)
 	struct udevice *vid_dev = dev_get_parent(dev);
 	struct video_priv *vid_priv = dev_get_uclass_priv(vid_dev);
 
+	int advance, lsb, cw;
+
 	priv->cur_met = met;
-	vc_priv->x_charsize = met->font_size;
+	/*
+	 * Cell width = the advance of a monospace glyph (about half the font
+	 * height), rounded up: EFI / ANSI cursor positioning uses
+	 * col * x_charsize and putc_xy advances by whole cells, so rows line up
+	 * and never wrap early.
+	 */
+	stbtt_GetCodepointHMetrics(&met->font, 'M', &advance, &lsb);
+	cw = (int)(advance * met->scale + 0.999);
+	if (cw <= 0 || cw > met->font_size)
+		cw = met->font_size;
+	vc_priv->x_charsize = cw;
 	vc_priv->y_charsize = met->font_size;
 	vc_priv->xstart_frac = VID_TO_POS(2);
-	vc_priv->cols = vid_priv->xsize / met->font_size;
+	vc_priv->cols = (vid_priv->xsize - 2) / cw;
 	vc_priv->rows = vid_priv->ysize / met->font_size;
 	vc_priv->tab_width_frac = VID_TO_POS(met->font_size) * 8 / 2;
 }
