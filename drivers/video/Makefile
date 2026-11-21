@@ -16,6 +16,8 @@ obj-y += console_core.o
 endif
 obj-$(CONFIG_CONSOLE_ROTATION) += console_core.o
 obj-$(CONFIG_CONSOLE_TRUETYPE) += console_truetype.o fonts/
+# stb_truetype rasterises with floating point; start.S leaves FP/SIMD enabled
+CFLAGS_REMOVE_console_truetype.o := -mgeneral-regs-only
 obj-$(CONFIG_DISPLAY) += display-uclass.o
 obj-$(CONFIG_VIDEO_MIPI_DSI) += dsi-host-uclass.o
 obj-$(CONFIG_$(PHASE_)VIDEO) += video-uclass.o vidconsole-uclass.o
