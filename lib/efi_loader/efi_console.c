@@ -344,7 +344,8 @@ static int __maybe_unused query_vidconsole(int *rows, int *cols)
 	struct udevice *dev;
 	struct vidconsole_priv *priv;
 
-	if (!stdout_name || strncmp(stdout_name, "vidconsole", 10))
+	/* stdout may list several devices, e.g. "serial,vidconsole" */
+	if (!stdout_name || !strstr(stdout_name, "vidconsole"))
 		return -ENODEV;
 	stdout_dev = stdio_get_by_name("vidconsole");
 	if (!stdout_dev)
