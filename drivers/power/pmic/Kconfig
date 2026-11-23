@@ -280,6 +280,16 @@ config PMIC_S2MPS11
 	This driver provides access to I/O interface only.
 	Binding info: doc/device-tree-bindings/pmic/s2mps11.txt
 
+config PMIC_S2MPS19
+	bool "Enable Driver Model for PMIC Samsung S2MPS19"
+	depends on EXYNOS_ACPM
+	---help---
+	The Samsung S2MPS19 is the main PMIC of the boards with the Exynos
+	9820 SoC. It provides, among others, 12 buck converters, a buck-boost
+	converter and 27 LDO regulators. It is accessed through the ACPM
+	firmware of the SoC.
+	This driver provides access to I/O interface only.
+
 config DM_PMIC_SANDBOX
 	bool "Enable Driver Model for emulated Sandbox PMIC"
 	---help---

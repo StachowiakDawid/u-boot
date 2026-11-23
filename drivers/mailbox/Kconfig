@@ -21,6 +21,14 @@ config APPLE_MBOX
 	  such as the System Management Controller (SMC) and NVMe and this
 	  driver is required to get that functionality up and running.
 
+config EXYNOS_MBOX
+	bool "Enable Samsung Exynos APM mailbox support"
+	depends on DM_MAILBOX && ARCH_EXYNOS
+	help
+	  Enable support for the mailbox of Samsung Exynos SoCs that rings
+	  the doorbell of the APM (Active Power Management) co-processor.
+	  It is used by the ACPM protocol driver.
+
 config IMX_MU_MBOX
 	bool "Enable i.MX MU MBOX support"
 	depends on DM_MAILBOX

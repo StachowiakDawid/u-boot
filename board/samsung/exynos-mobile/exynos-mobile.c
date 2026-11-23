@@ -39,15 +39,25 @@ struct exynos_board_info {
 
 /*
  * The memory mapping includes all DRAM banks, along with the
- * peripheral block, and a sentinel at the end. This is filled in
- * dynamically.
+ * peripheral blocks, and a sentinel at the end. The DRAM banks are
+ * filled in dynamically, after the EXYNOS_MMIO_REGIONS fixed entries.
  */
-static struct mm_region exynos_mem_map[CONFIG_NR_DRAM_BANKS + 2] = {
+#define EXYNOS_MMIO_REGIONS	2
+
+static struct mm_region exynos_mem_map[CONFIG_NR_DRAM_BANKS +
+				       EXYNOS_MMIO_REGIONS + 1] = {
 	{
 		/* Peripheral MMIO block */
 		.virt = 0x10000000UL,
 		.phys = 0x10000000UL,
 		.size = 0x10000000UL,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE | PTE_BLOCK_PXN | PTE_BLOCK_UXN,
+	}, {
+		/* Internal SRAM, shared with the APM firmware (ACPM) */
+		.virt = 0x02000000UL,
+		.phys = 0x02000000UL,
+		.size = 0x00200000UL,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE | PTE_BLOCK_PXN | PTE_BLOCK_UXN,
 	},
@@ -205,6 +215,7 @@ static void exynos_parse_dram_banks(const struct exynos_board_info *board_info,
 				    const void *fdt_base)
 {
 	u64 mem_addr, mem_size = 0;
+	struct mm_region *map;
 	u32 na, ns, i, j;
 	int offset;
 
@@ -233,11 +244,12 @@ log_debug("%s: %d, na = %u, ns = %u\n", __func__, __LINE__, na, ns);
 				if (board_info->dram_bank_bases[j] != mem_addr)
 					continue;
 
-				mem_map[j + 1].phys = mem_addr;
-				mem_map[j + 1].virt = mem_addr;
-				mem_map[j + 1].size = mem_size;
-				mem_map[j + 1].attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
-						       PTE_BLOCK_INNER_SHARE;
+				map = &mem_map[j + EXYNOS_MMIO_REGIONS];
+				map->phys = mem_addr;
+				map->virt = mem_addr;
+				map->size = mem_size;
+				map->attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+					     PTE_BLOCK_INNER_SHARE;
 				break;
 			}
 		}
@@ -374,9 +386,11 @@ int dram_init(void)
 
 	/* Select the lowest RAM bank for U-Boot. */
 	for (i = 0; i < 1; i++) {
-		if (gd->ram_size < mem_map[i + 1].size) {
-			gd->ram_base = mem_map[i + 1].phys;
-			gd->ram_size = mem_map[i + 1].size;
+		const struct mm_region *map = &mem_map[i + EXYNOS_MMIO_REGIONS];
+
+		if (gd->ram_size < map->size) {
+			gd->ram_base = map->phys;
+			gd->ram_size = map->size;
 		}
 	}
 
@@ -388,8 +402,10 @@ int dram_init_banksize(void)
 	unsigned int i;
 
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
-		gd->bd->bi_dram[i].start = mem_map[i + 1].phys;
-		gd->bd->bi_dram[i].size = mem_map[i + 1].size;
+		const struct mm_region *map = &mem_map[i + EXYNOS_MMIO_REGIONS];
+
+		gd->bd->bi_dram[i].start = map->phys;
+		gd->bd->bi_dram[i].size = map->size;
 	}
 
 	return 0;
@@ -401,7 +417,9 @@ void efi_add_known_memory(void)
 
 	/* Make sure kernel is placed in the lowest memory bank */
 	for (i = 3; i < CONFIG_NR_DRAM_BANKS; i++) {
-		efi_add_memory_map(mem_map[i + 1].phys, mem_map[i + 1].size,
+		const struct mm_region *map = &mem_map[i + EXYNOS_MMIO_REGIONS];
+
+		efi_add_memory_map(map->phys, map->size,
 				   EFI_BOOT_SERVICES_DATA);
 	}
 }

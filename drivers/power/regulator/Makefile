@@ -27,6 +27,7 @@ obj-$(CONFIG_DM_REGULATOR_QCOM_RPMH) += qcom-rpmh-regulator.o
 obj-$(CONFIG_DM_REGULATOR_QCOM_USB_VBUS) += qcom_usb_vbus_regulator.o
 obj-$(CONFIG_$(PHASE_)REGULATOR_RK8XX) += rk8xx.o
 obj-$(CONFIG_DM_REGULATOR_S2MPS11) += s2mps11_regulator.o
+obj-$(CONFIG_DM_REGULATOR_S2MPS19) += s2mps19_regulator.o
 obj-$(CONFIG_REGULATOR_S5M8767) += s5m8767.o
 obj-$(CONFIG_DM_REGULATOR_SANDBOX) += sandbox.o
 obj-$(CONFIG_REGULATOR_TPS65090) += tps65090_regulator.o

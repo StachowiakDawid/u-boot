@@ -275,6 +275,15 @@ config DM_REGULATOR_S2MPS11
 	features for REGULATOR S2MPS11.
 	The driver implements get/set api for: value and enable.
 
+config DM_REGULATOR_S2MPS19
+	bool "Enable driver for S2MPS19 regulator"
+	depends on DM_REGULATOR && PMIC_S2MPS19
+	---help---
+	This enables implementation of driver-model regulator uclass
+	features for REGULATOR S2MPS19.
+	The driver implements get/set api for: value and enable, of the
+	LDOs.
+
 config REGULATOR_S5M8767
 	bool "Enable support for S5M8767 regulator"
 	depends on DM_REGULATOR && PMIC_S5M8767

@@ -5,6 +5,7 @@
 
 obj-$(CONFIG_$(PHASE_)DM_MAILBOX) += mailbox-uclass.o
 obj-$(CONFIG_APPLE_MBOX) += apple-mbox.o
+obj-$(CONFIG_EXYNOS_MBOX) += exynos-mbox.o
 obj-$(CONFIG_IMX_MU_MBOX) += imx-mailbox.o
 obj-$(CONFIG_MPFS_MBOX) += mpfs-mbox.o
 obj-$(CONFIG_SANDBOX_MBOX) += sandbox-mbox.o

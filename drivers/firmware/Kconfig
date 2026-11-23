@@ -39,6 +39,17 @@ config ZYNQMP_FIRMWARE
 	  Say yes to enable ZynqMP firmware interface driver.
 	  If in doubt, say N.
 
+config EXYNOS_ACPM
+	bool "Samsung Exynos ACPM protocol"
+	depends on ARCH_EXYNOS && EXYNOS_MBOX
+	select FIRMWARE
+	help
+	  ACPM (Alive Clock and Power Manager) is the protocol spoken by the
+	  firmware of the APM co-processor of Samsung Exynos SoCs, through
+	  queues in a shared memory and a mailbox doorbell. The firmware
+	  owns the bus to the PMICs, so this is needed to control the
+	  regulators of the boards with those SoCs.
+
 config ARM_SMCCC_FEATURES
 	bool "Arm SMCCC features discovery"
 	depends on ARM_PSCI_FW
