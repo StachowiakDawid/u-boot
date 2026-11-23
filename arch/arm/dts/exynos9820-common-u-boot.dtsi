@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+/*
+ * U-Boot additions to the device tree common to the Samsung Galaxy S10
+ * boards with the Exynos 9820 SoC
+ */
+
+#include "exynos9820-u-boot.dtsi"
+
+/*
+ * The touchscreen is not used and its supplies are as the previous boot
+ * stage left them: do not make U-Boot set them up (it would probe every
+ * regulator that is on from the boot on).
+ */
+&ldo19m {
+	/delete-property/ regulator-boot-on;
+};
+
+&ldo27m {
+	/delete-property/ regulator-boot-on;
+};

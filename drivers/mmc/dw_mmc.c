@@ -7,6 +7,7 @@
 
 #include <bouncebuf.h>
 #include <cpu_func.h>
+#include <dm.h>
 #include <errno.h>
 #include <log.h>
 #include <malloc.h>
@@ -642,12 +643,21 @@ static int dwmci_set_ios(struct mmc *mmc)
 
 #if CONFIG_IS_ENABLED(DM_REGULATOR)
 	if (mmc->vqmmc_supply) {
-		int ret;
+		struct dm_regulator_uclass_plat *uc_pdata =
+			dev_get_uclass_plat(mmc->vqmmc_supply);
+		int ret, uV = 3300000;
+
+		/*
+		 * The 3.3 V signalling works with 2.7 V to 3.6 V: take the
+		 * highest voltage of a supply that does not reach 3.3 V.
+		 */
+		if (uc_pdata->max_uV >= 2700000 && uc_pdata->max_uV < uV)
+			uV = uc_pdata->max_uV;
 
 		if (mmc->signal_voltage == MMC_SIGNAL_VOLTAGE_180)
-			ret = regulator_set_value(mmc->vqmmc_supply, 1800000);
-		else
-			ret = regulator_set_value(mmc->vqmmc_supply, 3300000);
+			uV = 1800000;
+
+		ret = regulator_set_value(mmc->vqmmc_supply, uV);
 		if (ret && ret != -ENOSYS)
 			return ret;
 	}

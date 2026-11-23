@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+/*
+ * U-Boot additions to the Exynos 9820 SoC device tree: nodes U-Boot uses
+ * that the imported Linux device tree does not describe yet.
+ */
+
+&acpm_ipc {
+	/*
+	 * The DVFS clocks of the ACPM are not supported: the default rates
+	 * could not be set, which would fail the probe.
+	 */
+	/delete-property/ assigned-clocks;
+	/delete-property/ assigned-clock-rates;
+};
+
+&ap2apm_mailbox {
+	/* The doorbell bits are not where the GS101 mailbox has them */
+	compatible = "samsung,exynos9820-mbox", "google,gs101-mbox";
+};
+
+&pinctrl_fsys1 {
+	sd2_clk: sd2-clk-pins {
+		samsung,pins = "gpf1-0";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_2>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+		samsung,pin-drv = <4>;
+	};
+
+	sd2_cmd: sd2-cmd-pins {
+		samsung,pins = "gpf1-1";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_2>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_UP>;
+		samsung,pin-drv = <3>;
+	};
+
+	sd2_bus1: sd2-bus-width1-pins {
+		samsung,pins = "gpf1-2";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_2>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_UP>;
+		samsung,pin-drv = <3>;
+	};
+
+	sd2_bus4: sd2-bus-width4-pins {
+		samsung,pins = "gpf1-3", "gpf1-4", "gpf1-5";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_2>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_UP>;
+		samsung,pin-drv = <3>;
+	};
+};
+
+&soc {
+	/* Synopsys DW-MMC of the SD card slot ("dwmmc_2" downstream) */
+	mmc_2: mmc@13d00000 {
+		compatible = "samsung,exynos9820-dw-mshc",
+			     "samsung,exynos7870-dw-mshc";
+		reg = <0x13d00000 0x2000>;
+		interrupts = <GIC_SPI 250 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&cmu_fsys1 CLK_GOUT_FSYS1_MMC_CARD_I_ACLK>,
+			 <&cmu_fsys1 CLK_GOUT_FSYS1_MMC_CARD_SDCLKIN>;
+		clock-names = "biu", "ciu";
+		fifo-depth = <64>;
+		status = "disabled";
+	};
+};

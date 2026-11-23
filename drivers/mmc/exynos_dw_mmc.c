@@ -69,6 +69,8 @@ struct dwmci_exynos_priv_data {
 	struct dwmci_host host;
 #endif
 	struct clk clk;
+	struct clk biu_clk;
+	struct gpio_desc cd_gpio;
 	u32 sdr_timing;
 	u32 ddr_timing;
 	const struct exynos_dwmmc_variant *chip;
@@ -395,6 +397,27 @@ static int exynos_dwmmc_execute_tuning(struct udevice *dev, u32 opcode)
 
 struct dm_mmc_ops exynos_dwmmc_ops;
 
+static int exynos_dwmmc_get_cd(struct udevice *dev)
+{
+	struct dwmci_exynos_priv_data *priv = dev_get_priv(dev);
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+	int val;
+
+	/* Without a card detect GPIO, find out by talking to the card */
+	if (!dm_gpio_is_valid(&priv->cd_gpio) ||
+	    (mmc->cfg->host_caps & (MMC_CAP_NONREMOVABLE | MMC_CAP_NEEDS_POLL)))
+		return 1;
+
+	val = dm_gpio_get_value(&priv->cd_gpio);
+	if (val < 0)
+		return 1;
+
+	if (mmc->cfg->host_caps & MMC_CAP_CD_ACTIVE_HIGH)
+		val = !val;
+
+	return val;
+}
+
 static int exynos_dwmmc_probe(struct udevice *dev)
 {
 	struct exynos_mmc_plat *plat = dev_get_plat(dev);
@@ -409,10 +432,25 @@ static int exynos_dwmmc_probe(struct udevice *dev)
 #if CONFIG_IS_ENABLED(MMC_SUPPORTS_TUNING)
 	exynos_dwmmc_ops.execute_tuning = exynos_dwmmc_execute_tuning;
 #endif
+	exynos_dwmmc_ops.get_cd = exynos_dwmmc_get_cd;
+
+	/* The card detect GPIO is optional */
+	gpio_request_by_name(dev, "cd-gpios", 0, &priv->cd_gpio, GPIOD_IS_IN);
 
 #ifndef CONFIG_CPU_V7A
 	err = clk_get_by_index(dev, 1, &priv->clk); /* ciu */
 	if (err)
+		return err;
+
+	/* The bootloader may have left the clocks of an unused block gated */
+	err = clk_get_by_index(dev, 0, &priv->biu_clk); /* biu */
+	if (!err)
+		err = clk_enable(&priv->biu_clk);
+	if (err && err != -ENOSYS)
+		return err;
+
+	err = clk_enable(&priv->clk);
+	if (err && err != -ENOSYS)
 		return err;
 #endif
 
@@ -447,6 +485,10 @@ static int exynos_dwmmc_probe(struct udevice *dev)
 
 #ifdef CONFIG_BLK
 	dwmci_setup_cfg(&plat->cfg, host, DWMMC_MAX_FREQ, DWMMC_MIN_FREQ);
+	/* Board limits: "max-frequency", "no-1-8-v", ... */
+	err = mmc_of_parse(dev, &plat->cfg);
+	if (err)
+		return err;
 	host->mmc = &plat->mmc;
 #else
 	err = add_dwmci(host, DWMMC_MAX_FREQ, DWMMC_MIN_FREQ);
@@ -488,6 +530,10 @@ static const struct exynos_dwmmc_variant exynos7_smu_drv_data = {
 	.quirks	= DWMCI_QUIRK_DISABLE_SMU,
 };
 
+static const struct exynos_dwmmc_variant exynos7870_drv_data = {
+	.clksel	= DWMCI_CLKSEL64,
+};
+
 static const struct exynos_dwmmc_variant exynos850_drv_data = {
 	.clksel	= DWMCI_CLKSEL64,
 	.quirks	= DWMCI_QUIRK_DISABLE_SMU | DWMCI_QUIRK_DISABLE_FMP,
@@ -512,6 +558,9 @@ static const struct udevice_id exynos_dwmmc_ids[] = {
 	}, {
 		.compatible	= "samsung,exynos7-dw-mshc-smu",
 		.data		= (ulong)&exynos7_smu_drv_data,
+	}, {
+		.compatible	= "samsung,exynos7870-dw-mshc",
+		.data		= (ulong)&exynos7870_drv_data,
 	}, {
 		.compatible	= "samsung,exynos7870-dw-mshc-smu",
 		.data		= (ulong)&exynos7_smu_drv_data,

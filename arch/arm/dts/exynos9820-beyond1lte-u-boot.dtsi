@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+/*
+ * U-Boot additions to the Samsung Galaxy S10 (beyond1lte) device tree
+ */
+
+#include "exynos9820-common-u-boot.dtsi"

@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+/*
+ * U-Boot additions to the Samsung Galaxy S10+ (beyond2lte) device tree
+ */
+
+#include "exynos9820-common-u-boot.dtsi"
+
+/ {
+	aliases {
+		mmc0 = &mmc_2;
+	};
+};
+
+&acpm_ipc {
+	pmic-1 {
+		regulators {
+			/* SD card I/O supply */
+			ldo2m: ldo2m {
+				regulator-name = "sd_vqmmc";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <2800000>;
+				regulator-ramp-delay = <12000>;
+			};
+
+			/* SD card VDD */
+			ldo15m: ldo15m {
+				regulator-name = "sd_vmmc";
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
+				regulator-ramp-delay = <12000>;
+			};
+		};
+	};
+};
+
+&pinctrl_alive {
+	/* SD tray detect, external pull-up */
+	sd2_cd: sd2-cd-pins {
+		samsung,pins = "gpa1-5";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+	};
+};
+
+/*
+ * microSD (hybrid SIM2/SD tray). The I/O supply is kept at its highest
+ * voltage, 2.8 V: 3.3 V signalling only (no UHS-I).
+ */
+&mmc_2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus1 &sd2_bus4 &sd2_cd>;
+
+	bus-width = <4>;
+	/* low = tray inserted */
+	cd-gpios = <&gpa1 5 GPIO_ACTIVE_LOW>;
+	disable-wp;
+	cap-sd-highspeed;
+	no-1-8-v;
+	max-frequency = <50000000>;
+
+	vmmc-supply = <&ldo15m>;
+	vqmmc-supply = <&ldo2m>;
+
+	/* downstream <div fine-drv drv sample>: sdr <3 0 2 0> */
+	samsung,dw-mshc-ciu-div = <3>;
+	samsung,dw-mshc-sdr-timing = <0 2>;
+
+	status = "okay";
+};
